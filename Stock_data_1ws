@@ -1,0 +1,117 @@
+Sub QuarterlyStockAnalysis()
+
+    Dim ws As Worksheet
+    Dim ticker As String
+    Dim lastRow As Long
+    Dim i As Long
+    Dim quarterStartRow As Long, quarterEndRow As Long
+    Dim openPrice As Double, closePrice As Double
+    Dim quarterlyChange As Double
+    Dim percentageChange As Double
+    Dim totalVolume As Double
+    Dim outputRow As Long
+    
+    ' Variables to track greatest values
+    Dim greatestIncrease As Double
+    Dim greatestDecrease As Double
+    Dim greatestVolume As Double
+    Dim greatestIncreaseTicker As String
+    Dim greatestDecreaseTicker As String
+    Dim greatestVolumeTicker As String
+    
+    ' Initialize the greatest values
+    greatestIncrease = -9999999
+    greatestDecrease = 9999999
+    greatestVolume = 0
+    
+    ' Set worksheet
+    Set ws = ThisWorkbook.Sheets("Q1") ' Adjust the sheet name as necessary
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    
+    ' Set initial output row
+    outputRow = 2
+    
+    ' Add headers to the output columns
+    ws.Cells(1, 10).Value = "Ticker Symbol"
+    ws.Cells(1, 11).Value = "Quarterly Change"
+    ws.Cells(1, 12).Value = "Percentage Change"
+    ws.Cells(1, 13).Value = "Total Volume"
+    
+    ' Loop through each row
+    For i = 2 To lastRow
+        
+        ' Check if this is the first row of a new ticker
+        If ws.Cells(i, 1).Value <> ws.Cells(i - 1, 1).Value Then
+            ticker = ws.Cells(i, 1).Value
+            quarterStartRow = i
+            totalVolume = 0
+        End If
+        
+        ' Accumulate total volume
+        totalVolume = totalVolume + ws.Cells(i, 7).Value
+        
+        ' Check if this is the last row of the ticker or the end of a quarter
+        If ws.Cells(i, 1).Value <> ws.Cells(i + 1, 1).Value Or ws.Cells(i, 2).Value = "12/31" Then
+            quarterEndRow = i
+            
+            ' Get open and close prices
+            openPrice = ws.Cells(quarterStartRow, 3).Value
+            closePrice = ws.Cells(quarterEndRow, 6).Value
+            
+            ' Calculate quarterly change and percentage change
+            quarterlyChange = closePrice - openPrice
+            If openPrice <> 0 Then
+                percentageChange = (quarterlyChange / openPrice) * 100
+            Else
+                percentageChange = 0
+            End If
+            
+            ' Output the results
+            ws.Cells(outputRow, 10).Value = ticker
+            ws.Cells(outputRow, 11).Value = quarterlyChange
+            ws.Cells(outputRow, 12).Value = percentageChange
+            ws.Cells(outputRow, 13).Value = totalVolume
+            
+            ' Check for greatest percentage increase
+            If percentageChange > greatestIncrease Then
+                greatestIncrease = percentageChange
+                greatestIncreaseTicker = ticker
+            End If
+            
+            ' Check for greatest percentage decrease
+            If percentageChange < greatestDecrease Then
+                greatestDecrease = percentageChange
+                greatestDecreaseTicker = ticker
+            End If
+            
+            ' Check for greatest total volume
+            If totalVolume > greatestVolume Then
+                greatestVolume = totalVolume
+                greatestVolumeTicker = ticker
+            End If
+            
+            ' Increment output row
+            outputRow = outputRow + 1
+            
+            ' Reset for next ticker
+            quarterStartRow = i + 1
+            totalVolume = 0
+        End If
+    Next i
+    
+    ' Output the results for greatest values
+    ws.Cells(1, 15).Value = "Greatest % Increase"
+    ws.Cells(2, 15).Value = greatestIncreaseTicker
+    ws.Cells(2, 16).Value = greatestIncrease
+    
+    ws.Cells(4, 15).Value = "Greatest % Decrease"
+    ws.Cells(5, 15).Value = greatestDecreaseTicker
+    ws.Cells(5, 16).Value = greatestDecrease
+    
+    ws.Cells(7, 15).Value = "Greatest Total Volume"
+    ws.Cells(8, 15).Value = greatestVolumeTicker
+    ws.Cells(8, 16).Value = greatestVolume
+    
+    MsgBox "Quarterly Stock Analysis Completed!"
+    
+End Sub

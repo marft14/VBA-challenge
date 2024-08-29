@@ -1,0 +1,135 @@
+Sub StockAnalysis_AllSheets()
+
+    Dim ws As Worksheet
+    Dim resultWs As Worksheet
+    Dim ticker As String
+    Dim lastRow As Long
+    Dim i As Long
+    Dim quarterStartRow As Long, quarterEndRow As Long
+    Dim openPrice As Double, closePrice As Double
+    Dim quarterlyChange As Double
+    Dim percentageChange As Double
+    Dim totalVolume As Double
+    Dim outputRow As Long
+    
+    ' Variables to track greatest values
+    Dim greatestIncrease As Double
+    Dim greatestDecrease As Double
+    Dim greatestVolume As Double
+    Dim greatestIncreaseTicker As String
+    Dim greatestDecreaseTicker As String
+    Dim greatestVolumeTicker As String
+    
+    ' Initialize the greatest values
+    greatestIncrease = -9999999
+    greatestDecrease = 9999999
+    greatestVolume = 0
+    
+    ' Create or clear the consolidated results worksheet
+    On Error Resume Next
+    Set resultWs = ThisWorkbook.Sheets("Consolidated Results")
+    If resultWs Is Nothing Then
+        Set resultWs = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        resultWs.Name = "Consolidated Results"
+    Else
+        resultWs.Cells.Clear
+    End If
+    On Error GoTo 0
+    
+    ' Set initial output row in the consolidated sheet
+    outputRow = 2
+    
+    ' Add headers to the output columns in the consolidated sheet
+    resultWs.Cells(1, 1).Value = "Sheet Name"
+    resultWs.Cells(1, 2).Value = "Ticker Symbol"
+    resultWs.Cells(1, 3).Value = "Quarterly Change"
+    resultWs.Cells(1, 4).Value = "Percentage Change"
+    resultWs.Cells(1, 5).Value = "Total Volume"
+    
+    ' Loop through each worksheet
+    For Each ws In ThisWorkbook.Sheets
+        ' Skip the "Consolidated Results" sheet
+        If ws.Name <> "Consolidated Results" Then
+            lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+            
+            ' Loop through each row in the worksheet
+            For i = 2 To lastRow
+                
+                ' Check if this is the first row of a new ticker
+                If ws.Cells(i, 1).Value <> ws.Cells(i - 1, 1).Value Then
+                    ticker = ws.Cells(i, 1).Value
+                    quarterStartRow = i
+                    totalVolume = 0
+                End If
+                
+                ' Accumulate total volume
+                totalVolume = totalVolume + ws.Cells(i, 7).Value
+                
+                ' Check if this is the last row of the ticker or the end of a quarter
+                If ws.Cells(i, 1).Value <> ws.Cells(i + 1, 1).Value Or ws.Cells(i, 2).Value = "12/31" Then
+                    quarterEndRow = i
+                    
+                    ' Get open and close prices
+                    openPrice = ws.Cells(quarterStartRow, 3).Value
+                    closePrice = ws.Cells(quarterEndRow, 6).Value
+                    
+                    ' Calculate quarterly change and percentage change
+                    quarterlyChange = closePrice - openPrice
+                    If openPrice <> 0 Then
+                        percentageChange = (quarterlyChange / openPrice) * 100
+                    Else
+                        percentageChange = 0
+                    End If
+                    
+                    ' Output the results to the consolidated sheet
+                    resultWs.Cells(outputRow, 1).Value = ws.Name
+                    resultWs.Cells(outputRow, 2).Value = ticker
+                    resultWs.Cells(outputRow, 3).Value = quarterlyChange
+                    resultWs.Cells(outputRow, 4).Value = percentageChange
+                    resultWs.Cells(outputRow, 5).Value = totalVolume
+                    
+                    ' Check for greatest percentage increase
+                    If percentageChange > greatestIncrease Then
+                        greatestIncrease = percentageChange
+                        greatestIncreaseTicker = ticker & " (" & ws.Name & ")"
+                    End If
+                    
+                    ' Check for greatest percentage decrease
+                    If percentageChange < greatestDecrease Then
+                        greatestDecrease = percentageChange
+                        greatestDecreaseTicker = ticker & " (" & ws.Name & ")"
+                    End If
+                    
+                    ' Check for greatest total volume
+                    If totalVolume > greatestVolume Then
+                        greatestVolume = totalVolume
+                        greatestVolumeTicker = ticker & " (" & ws.Name & ")"
+                    End If
+                    
+                    ' Increment output row
+                    outputRow = outputRow + 1
+                    
+                    ' Reset for next ticker
+                    quarterStartRow = i + 1
+                    totalVolume = 0
+                End If
+            Next i
+        End If
+    Next ws
+    
+    ' Output the results for greatest values
+    resultWs.Cells(1, 7).Value = "Greatest % Increase"
+    resultWs.Cells(2, 7).Value = greatestIncreaseTicker
+    resultWs.Cells(2, 8).Value = greatestIncrease
+    
+    resultWs.Cells(4, 7).Value = "Greatest % Decrease"
+    resultWs.Cells(5, 7).Value = greatestDecreaseTicker
+    resultWs.Cells(5, 8).Value = greatestDecrease
+    
+    resultWs.Cells(7, 7).Value = "Greatest Total Volume"
+    resultWs.Cells(8, 7).Value = greatestVolumeTicker
+    resultWs.Cells(8, 8).Value = greatestVolume
+    
+    MsgBox "Quarterly Stock Analysis Completed for All Sheets!"
+    
+End Sub
